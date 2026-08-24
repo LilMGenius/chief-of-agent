@@ -27,9 +27,9 @@ err() {
 
 json_valid() {
   if [[ "${json_runner[0]}" == python3 ]]; then
-    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null
+    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null </dev/null
   else
-    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null
+    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null </dev/null
   fi
 }
 
@@ -42,14 +42,14 @@ with open(sys.argv[1], encoding="utf-8") as file:
 with open(sys.argv[2], encoding="utf-8") as file:
     plugin = json.load(file)
 sys.exit(package["description"] != plugin["description"])
-' package.json .claude-plugin/plugin.json >/dev/null
+' package.json .claude-plugin/plugin.json >/dev/null </dev/null
   else
     "${json_runner[@]}" -e '
 const fs = require("fs");
 const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 const plugin = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 process.exit(pkg.description === plugin.description ? 0 : 1);
-' package.json .claude-plugin/plugin.json >/dev/null
+' package.json .claude-plugin/plugin.json >/dev/null </dev/null
   fi
 }
 
@@ -61,13 +61,13 @@ with open(sys.argv[1], encoding="utf-8") as file:
     plugin = json.load(file)
 for skill in plugin.get("skills", []):
     print(skill)
-' .claude-plugin/plugin.json
+' .claude-plugin/plugin.json </dev/null
   else
     "${json_runner[@]}" -e '
 const fs = require("fs");
 const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 for (const skill of plugin.skills || []) console.log(skill);
-' .claude-plugin/plugin.json
+' .claude-plugin/plugin.json </dev/null
   fi
 }
 
@@ -78,13 +78,13 @@ import json, sys
 with open(sys.argv[1], encoding="utf-8") as file:
     plugin = json.load(file)
 sys.exit(f"./skills/{sys.argv[2]}" not in plugin.get("skills", []))
-' .claude-plugin/plugin.json "$1"
+' .claude-plugin/plugin.json "$1" </dev/null
   else
     "${json_runner[@]}" -e '
 const fs = require("fs");
 const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 process.exit((plugin.skills || []).includes(`./skills/${process.argv[2]}`) ? 0 : 1);
-' .claude-plugin/plugin.json "$1"
+' .claude-plugin/plugin.json "$1" </dev/null
   fi
 }
 
@@ -183,6 +183,10 @@ while IFS= read -r skill_file; do
     err "$skill_dir contains a relative link with ../"
   fi
 done < <(find skills -mindepth 2 -maxdepth 2 -type f -name SKILL.md 2>/dev/null | sort)
+
+if (( skill_count == 0 )); then
+  err 'no skills/<name>/SKILL.md was found, so no skill was validated'
+fi
 
 if (( fail )); then
   printf 'Skill catalog validation failed for %s skills.\n' "$skill_count"
