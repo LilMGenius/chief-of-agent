@@ -5,34 +5,106 @@ cd "$(dirname "$0")/.."
 
 fail=0
 skill_count=0
+json_runner=()
+
+if command -v node >/dev/null 2>&1; then
+  json_runner=(node)
+elif command -v node.exe >/dev/null 2>&1; then
+  json_runner=(node.exe)
+elif [[ -x '/mnt/c/Program Files/nodejs/node.exe' ]]; then
+  json_runner=('/mnt/c/Program Files/nodejs/node.exe')
+elif command -v python3 >/dev/null 2>&1; then
+  json_runner=(python3)
+else
+  printf '::error::no JSON interpreter is available\n' >&2
+  exit 1
+fi
 
 err() {
   printf '::error::%s\n' "$*"
   fail=1
 }
 
-if ! node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' .claude-plugin/plugin.json >/dev/null 2>&1; then
-  err '.claude-plugin/plugin.json is not valid JSON'
-fi
+json_valid() {
+  if [[ "${json_runner[0]}" == python3 ]]; then
+    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null
+  else
+    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null
+  fi
+}
 
-if ! node -e '
+json_descriptions_match() {
+  if [[ "${json_runner[0]}" == python3 ]]; then
+    "${json_runner[@]}" -c '
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as file:
+    package = json.load(file)
+with open(sys.argv[2], encoding="utf-8") as file:
+    plugin = json.load(file)
+sys.exit(package["description"] != plugin["description"])
+' package.json .claude-plugin/plugin.json >/dev/null
+  else
+    "${json_runner[@]}" -e '
 const fs = require("fs");
 const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 const plugin = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 process.exit(pkg.description === plugin.description ? 0 : 1);
-' package.json .claude-plugin/plugin.json >/dev/null 2>&1; then
-  err 'package.json description does not match .claude-plugin/plugin.json description'
-fi
-
-while IFS= read -r plugin_skill; do
-  if [[ ! -d "$plugin_skill" || ! -f "$plugin_skill/SKILL.md" ]]; then
-    err "plugin skill path $plugin_skill does not resolve to a directory containing SKILL.md"
+' package.json .claude-plugin/plugin.json >/dev/null
   fi
-done < <(node -e '
+}
+
+json_plugin_skills() {
+  if [[ "${json_runner[0]}" == python3 ]]; then
+    "${json_runner[@]}" -c '
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as file:
+    plugin = json.load(file)
+for skill in plugin.get("skills", []):
+    print(skill)
+' .claude-plugin/plugin.json
+  else
+    "${json_runner[@]}" -e '
 const fs = require("fs");
 const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 for (const skill of plugin.skills || []) console.log(skill);
-' .claude-plugin/plugin.json 2>/dev/null)
+' .claude-plugin/plugin.json
+  fi
+}
+
+json_skill_registered() {
+  if [[ "${json_runner[0]}" == python3 ]]; then
+    "${json_runner[@]}" -c '
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as file:
+    plugin = json.load(file)
+sys.exit(f"./skills/{sys.argv[2]}" not in plugin.get("skills", []))
+' .claude-plugin/plugin.json "$1"
+  else
+    "${json_runner[@]}" -e '
+const fs = require("fs");
+const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+process.exit((plugin.skills || []).includes(`./skills/${process.argv[2]}`) ? 0 : 1);
+' .claude-plugin/plugin.json "$1"
+  fi
+}
+
+plugin_valid=1
+if ! json_valid .claude-plugin/plugin.json; then
+  err '.claude-plugin/plugin.json is not valid JSON'
+  plugin_valid=0
+fi
+
+if (( plugin_valid )); then
+  if ! json_descriptions_match; then
+    err 'package.json description does not match .claude-plugin/plugin.json description'
+  fi
+
+  while IFS= read -r plugin_skill; do
+    if [[ ! -d "$plugin_skill" || ! -f "$plugin_skill/SKILL.md" ]]; then
+      err "plugin skill path $plugin_skill does not resolve to a directory containing SKILL.md"
+    fi
+  done < <(json_plugin_skills)
+fi
 
 while IFS= read -r skill_file; do
   skill_count=$((skill_count + 1))
@@ -99,11 +171,7 @@ while IFS= read -r skill_file; do
     err "$skill_file must contain exactly one ## Verification section"
   fi
 
-  if ! node -e '
-    const fs = require("fs");
-    const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-    process.exit((plugin.skills || []).includes(`./skills/${process.argv[2]}`) ? 0 : 1);
-  ' .claude-plugin/plugin.json "$skill_name" >/dev/null 2>&1; then
+  if (( plugin_valid )) && ! json_skill_registered "$skill_name"; then
     err "$skill_file is not registered in .claude-plugin/plugin.json"
   fi
 
@@ -111,7 +179,7 @@ while IFS= read -r skill_file; do
     err "$skill_file is not listed in README.md as skills/$skill_name/SKILL.md"
   fi
 
-  if rg -n '\]\([^)]*\.\./' "$skill_dir" --glob '*.md' >/dev/null; then
+  if grep -rn --include='*.md' -E '\]\([^)]*\.\./' "$skill_dir" >/dev/null; then
     err "$skill_dir contains a relative link with ../"
   fi
 done < <(find skills -mindepth 2 -maxdepth 2 -type f -name SKILL.md 2>/dev/null | sort)
