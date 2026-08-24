@@ -20,7 +20,7 @@ No control begins checked. The surface does not recommend an option, score alter
 
 ## Grouping
 
-Group every item by its ANSWERER tag. Render the `decider` group last and make it visually distinct from the earlier groups. Its size must be legible at a glance.
+Group every item by its ANSWERER tag. The closed set of tags is `artifact`, `submitter`, `delegate`, and `decider`. Render the decider group last and make it visually distinct from the earlier groups. Its size must be legible at a glance.
 
 ## Copy-out
 
