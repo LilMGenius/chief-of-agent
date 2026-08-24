@@ -1,0 +1,34 @@
+{
+  "name": "chief-of-agent",
+  "version": "0.1.0",
+  "description": "Decision instruments that turn submitted material into checkable criteria and compute a verdict from the decider's own answers.",
+  "keywords": [
+    "agent",
+    "agent-skills",
+    "skills",
+    "claude-code",
+    "codex",
+    "agent-agnostic",
+    "decision",
+    "decision-support",
+    "approval",
+    "review",
+    "governance",
+    "delegation",
+    "criteria",
+    "checklist",
+    "verdict",
+    "knowledge-base",
+    "documentation"
+  ],
+  "author": "LilMGenius (https://github.com/LilMGenius)",
+  "license": "MIT",
+  "homepage": "https://github.com/LilMGenius/chief-of-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LilMGenius/chief-of-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LilMGenius/chief-of-agent/issues"
+  }
+}
