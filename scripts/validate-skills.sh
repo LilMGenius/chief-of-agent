@@ -114,6 +114,11 @@ while IFS= read -r skill_file; do
   skill_dir=$(dirname "$skill_file")
   skill_name=$(basename "$skill_dir")
 
+  if [[ "$skill_dir" != "skills/$skill_name" ]]; then
+    err "$skill_file is nested below skills/<name>/SKILL.md"
+    continue
+  fi
+
   if ! awk '
     { sub(/\r$/, "") }
     NR == 1 { valid = ($0 == "---"); next }
@@ -190,6 +195,18 @@ while IFS= read -r skill_file; do
     err "$skill_dir contains a relative link with ../"
   fi
 done < <(find skills -mindepth 2 -name SKILL.md 2>/dev/null | sort)
+
+while IFS= read -r skill_dir; do
+  if [[ ! -f "$skill_dir/SKILL.md" ]]; then
+    err "$skill_dir exists but contains no SKILL.md"
+  fi
+done < <(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+while IFS= read -r listed_name; do
+  if [[ ! -f "skills/$listed_name/SKILL.md" ]]; then
+    err "README.md lists skills/$listed_name/SKILL.md which does not exist"
+  fi
+done < <(grep -oE 'skills/[A-Za-z0-9_-]+/SKILL\.md' README.md | cut -d/ -f2 | sort -u)
 
 if (( skill_count == 0 )); then
   err 'no skills/<name>/SKILL.md was found, so no skill was validated'

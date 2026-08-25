@@ -19,7 +19,7 @@ bash scripts/validate-skills.sh
 bash scripts/check-links.sh
 ```
 
-The first checks that every skill on disk is registered, listed, and structurally complete. The second resolves every relative link in every markdown file. Both exit non-zero on the first problem and name the file. CI runs them on every push.
+The first checks that every skill on disk is registered, listed, and structurally complete, and that every registered or listed skill exists on disk. The second resolves every relative link in every markdown file. Both report every problem they find, name the file, and exit non-zero when any problem was reported. They need bash plus node or python3 on PATH. CI runs them on every push.
 
 ## Skill index
 

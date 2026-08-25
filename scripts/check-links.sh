@@ -48,7 +48,7 @@ check_target() {
 
 while IFS= read -r file; do
   refs=()
-  content=$(sed -E 's/!\[[^]]*\]\([^)]*\)//g' "$file")
+  content=$(sed -E 's/\r$//; s/!\[[^]]*\]\([^)]*\)//g' "$file")
 
   while IFS=$'\t' read -r label target; do
     refs["${label,,}"]=$target
