@@ -41,6 +41,8 @@ with open(sys.argv[1], encoding="utf-8") as file:
     package = json.load(file)
 with open(sys.argv[2], encoding="utf-8") as file:
     plugin = json.load(file)
+if not package.get("description") or not plugin.get("description"):
+    sys.exit(1)
 sys.exit(package["description"] != plugin["description"])
 ' package.json .claude-plugin/plugin.json >/dev/null </dev/null
   else
@@ -48,6 +50,7 @@ sys.exit(package["description"] != plugin["description"])
 const fs = require("fs");
 const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 const plugin = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+if (!pkg.description || !plugin.description) process.exit(1);
 process.exit(pkg.description === plugin.description ? 0 : 1);
 ' package.json .claude-plugin/plugin.json >/dev/null </dev/null
   fi
@@ -112,6 +115,7 @@ while IFS= read -r skill_file; do
   skill_name=$(basename "$skill_dir")
 
   if ! awk '
+    { sub(/\r$/, "") }
     NR == 1 { valid = ($0 == "---"); next }
     !valid { exit 2 }
     $0 == "---" { closed = 1; exit }
@@ -122,6 +126,7 @@ while IFS= read -r skill_file; do
   fi
 
   if ! awk '
+    { sub(/\r$/, "") }
     NR == 1 { next }
     $0 == "---" { exit }
     /^[[:space:]]*$/ || /^[[:space:]]*#/ { next }
@@ -131,11 +136,13 @@ while IFS= read -r skill_file; do
   fi
 
   declared_name=$(awk '
+    { sub(/\r$/, "") }
     NR == 1 { next }
     $0 == "---" { exit }
     /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); print; exit }
   ' "$skill_file")
   description=$(awk '
+    { sub(/\r$/, "") }
     NR == 1 { next }
     $0 == "---" { exit }
     /^description:[[:space:]]*/ { sub(/^description:[[:space:]]*/, ""); print; exit }
@@ -158,16 +165,16 @@ while IFS= read -r skill_file; do
     fi
   fi
 
-  if [[ $(grep -cE '^## +Goal$' "$skill_file") -ne 1 ]]; then
+  if [[ $(grep -cE '^## +Goal[[:space:]]*$' "$skill_file") -ne 1 ]]; then
     err "$skill_file must contain exactly one ## Goal section"
   fi
-  if [[ $(grep -cE '^## +Workflow$' "$skill_file") -ne 1 ]]; then
+  if [[ $(grep -cE '^## +Workflow[[:space:]]*$' "$skill_file") -ne 1 ]]; then
     err "$skill_file must contain exactly one ## Workflow section"
   fi
-  if [[ $(grep -cE '^## +Rules$' "$skill_file") -ne 1 ]]; then
+  if [[ $(grep -cE '^## +Rules[[:space:]]*$' "$skill_file") -ne 1 ]]; then
     err "$skill_file must contain exactly one ## Rules section"
   fi
-  if [[ $(grep -cE '^## +Verification$' "$skill_file") -ne 1 ]]; then
+  if [[ $(grep -cE '^## +Verification[[:space:]]*$' "$skill_file") -ne 1 ]]; then
     err "$skill_file must contain exactly one ## Verification section"
   fi
 
@@ -182,7 +189,7 @@ while IFS= read -r skill_file; do
   if grep -rn --include='*.md' -E '\]\([^)]*\.\./' "$skill_dir" >/dev/null; then
     err "$skill_dir contains a relative link with ../"
   fi
-done < <(find skills -mindepth 2 -maxdepth 2 -type f -name SKILL.md 2>/dev/null | sort)
+done < <(find skills -mindepth 2 -name SKILL.md 2>/dev/null | sort)
 
 if (( skill_count == 0 )); then
   err 'no skills/<name>/SKILL.md was found, so no skill was validated'

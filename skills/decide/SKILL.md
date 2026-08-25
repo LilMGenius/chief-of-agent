@@ -37,4 +37,4 @@ Build the interactive instrument when the count of gate items is greater than 3 
 
 ## Verification
 
-Check that every item traces to a source location. Check that the count of decider-tagged items is strictly less than the total item count. Check that the chosen surface matches the D10 rule computed from the extraction. Check that the verdict uses only `blocked`, `conditional`, or `clear`. Check that no sentence in the output recommends an outcome.
+Check that every item traces to a source location. Check that the count of decider-tagged items is strictly less than the total item count. Check that the chosen surface matches the one the [rendering contract](./references/rendering-contract.md) selects for that item count. Check that the verdict uses only `blocked`, `conditional`, or `clear`. Check that no sentence in the output recommends an outcome.

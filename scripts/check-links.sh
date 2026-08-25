@@ -13,9 +13,15 @@ err() {
 }
 
 mapfile -t files < <(
-  find skills -type f -name SKILL.md 2>/dev/null
+  find skills -type f -name '*.md' 2>/dev/null
   find . -maxdepth 1 -type f -name '*.md' -print
 )
+
+if (( ${#files[@]} == 0 )); then
+  err 'no markdown file was found, so no link was checked'
+  printf 'Checked 0 resolved links across 0 files.\n'
+  exit 1
+fi
 
 check_target() {
   local target=$1
