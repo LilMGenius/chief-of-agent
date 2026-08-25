@@ -28,4 +28,4 @@ Provide one action that copies a plain-text summary of the current state. The su
 
 ## Local operation
 
-The emitted surface is one self-contained file. It makes no network fetch, uses no CDN or external font, and needs no build step or server. Opening it from a local path provides the complete interaction.
+The emitted surface is one self-contained HTML file, with its markup, styles, and behaviour inline in that single file. It makes no network fetch, uses no CDN or external font, and needs no build step or server. Opening it from a local path in a browser provides the complete interaction.

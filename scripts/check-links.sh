@@ -13,8 +13,7 @@ err() {
 }
 
 mapfile -t files < <(
-  find skills -type f -name '*.md' 2>/dev/null
-  find . -maxdepth 1 -type f -name '*.md' -print
+  find . -type f -name '*.md' -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | sed 's|^\./||' | sort
 )
 
 if (( ${#files[@]} == 0 )); then
@@ -33,6 +32,7 @@ check_target() {
   target=${target%%\?*}
   target=${target#<}
   target=${target%>}
+  target=${target%% *}
 
   if [[ -z "$target" || "$target" == http://* || "$target" == https://* || "$target" == //* || "$target" == mailto:* || "$target" == tel:* ]]; then
     return
@@ -48,7 +48,11 @@ check_target() {
 
 while IFS= read -r file; do
   refs=()
-  content=$(sed -E 's/\r$//; s/!\[[^]]*\]\([^)]*\)//g' "$file")
+  content=$(sed -E 's/\r$//' "$file" | awk '
+    /^[[:space:]]*(```|~~~)/ { fenced = !fenced; next }
+    fenced { next }
+    { print }
+  ')
 
   while IFS=$'\t' read -r label target; do
     refs["${label,,}"]=$target

@@ -26,6 +26,14 @@
   ],
   "author": "LilMGenius (https://github.com/LilMGenius)",
   "license": "MIT",
+  "files": [
+    ".claude-plugin",
+    "skills",
+    "CLAUDE.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
   "homepage": "https://github.com/LilMGenius/chief-of-agent#readme",
   "repository": {
     "type": "git",

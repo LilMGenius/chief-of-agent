@@ -4,6 +4,8 @@ description: "Turn submitted decision material into a traceable, checkable instr
 disable-model-invocation: true
 ---
 
+Turns submitted decision material into a traceable instrument the decider can check.
+
 ## Goal
 
 Turn material submitted for a decision into a checkable instrument for the person holding the decision. Never render the decision. Its defensible property is traceability, not neutrality.
@@ -37,4 +39,4 @@ Build the interactive instrument when the count of gate items is greater than 3 
 
 ## Verification
 
-Check that every item traces to a source location. Check that the count of decider-tagged items is strictly less than the total item count. Check that the chosen surface matches the one the [rendering contract](./references/rendering-contract.md) selects for that item count. Check that the verdict uses only `blocked`, `conditional`, or `clear`. Check that no sentence in the output recommends an outcome.
+Check that every item traces to a source location. Check that the count of decider-tagged items is strictly less than the total item count. Check that every control renders in the form the [rendering contract](./references/rendering-contract.md) assigns its type, that items are grouped by answerer tag with the decider group last, and that the surface is one self-contained file with no network fetch. Check that the verdict uses only `blocked`, `conditional`, or `clear`, and that it was recomputed from the current controls rather than stored. Check that no sentence in the output recommends an outcome.

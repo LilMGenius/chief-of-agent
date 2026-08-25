@@ -191,7 +191,7 @@ while IFS= read -r skill_file; do
     err "$skill_file is not listed in README.md as skills/$skill_name/SKILL.md"
   fi
 
-  if grep -rn --include='*.md' -E '\]\([^)]*\.\./' "$skill_dir" >/dev/null; then
+  if grep -rn --include='*.md' -E '(\]\([[:space:]]*|^[[:space:]]*\[[^]]+\]:[[:space:]]*)<?\.\./' "$skill_dir" >/dev/null; then
     err "$skill_dir contains a relative link with ../"
   fi
 done < <(find skills -mindepth 2 -name SKILL.md 2>/dev/null | sort)

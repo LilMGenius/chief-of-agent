@@ -4,6 +4,8 @@ description: "Land material of any shape into an existing knowledge base by read
 disable-model-invocation: true
 ---
 
+Lands handed-over material at the tier the target knowledge base already defines.
+
 ## Goal
 
 Take material handed over in any shape and land it at the correct tier of a knowledge base that already exists, by editing the document that owns the subject rather than creating a neighbour beside it. The placement is decided from the target's own stated rules, read at run time. This skill does not research the subject it is handed, and it does not invent a tier to hold something that fits none.
