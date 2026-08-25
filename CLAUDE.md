@@ -19,7 +19,7 @@ skills/<name>/SKILL.md
 
 Flat, one directory per skill. Topic domains belong in separate plugins, so a skill that is not about exercising decision authority over material somebody else submitted belongs in a different plugin, not in a new folder here.
 
-Promote to a grouped layout (`skills/<group>/<name>/`) only when both conditions hold at once: there are at least 4 skills, and at least 2 of them genuinely share a grouping that a stranger would guess. Until then the flat form is correct, and a grouping invented for 2 skills is a shape with nothing in it. The condition is written here rather than the outcome, so a later contributor inherits the trigger and rules on it themselves.
+A grouped layout (`skills/<group>/<name>/`) is a future option, not a supported one: `scripts/validate-skills.sh` rejects a `SKILL.md` below `skills/<name>/`, so adopting it means changing the walk and this section together. Consider it only when both conditions hold at once: there are at least 4 skills, and at least 2 of them genuinely share a grouping that a stranger would guess. Until then the flat form is correct, and a grouping invented for 2 skills is a shape with nothing in it. The condition is written here rather than the outcome, so a later contributor inherits the trigger and rules on it themselves.
 
 Name a skill for the reflex it fires: a plain real word (`decide`) or a tight compression of a real term. No opaque coinage, and never a model brand name, because the mechanism has to outlive any one model.
 
@@ -49,8 +49,8 @@ Default to model-invoked. Set `disable-model-invocation: true` when the model mu
 ## Conventions
 
 - No build step, ever. The package ships the repo as-is through `.gitignore` from a clean CI checkout.
-- No `.npmignore`. It would publish the `*.local` scratch files that `.gitignore` correctly withholds.
-- No `scripts` field in `package.json`. There is nothing to run.
+- No `.npmignore`. The `files` allowlist in `package.json` decides what publishes, and it names the markdown the skills need and nothing else. `.gitignore` does not govern the tarball, so a scratch file that git withholds still needs the allowlist to keep it out.
+- No `scripts` field in `package.json`. The two gates are shell scripts under `scripts/`, run as `bash scripts/validate-skills.sh` and `bash scripts/check-links.sh`, so npm has nothing to wrap.
 - `package.json` `description` and `.claude-plugin/plugin.json` `description` are byte-identical, and `scripts/validate-skills.sh` asserts it.
 - A released skill is registered in `.claude-plugin/plugin.json` and listed in the README table, both or neither.
 

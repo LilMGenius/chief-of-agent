@@ -19,12 +19,15 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - run: bash scripts/validate-skills.sh
+      - run: bash scripts/check-links.sh
       - name: Assert tag matches package version
         run: |
           PKG=$(node -p "require('./package.json').version")
           TAG=${GITHUB_REF_NAME#v}
           test "$PKG" = "$TAG"
       - name: Publish when the package version is absent
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NAME=$(node -p "require('./package.json').name")
           PKG=$(node -p "require('./package.json').version")

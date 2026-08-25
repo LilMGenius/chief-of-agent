@@ -27,9 +27,9 @@ err() {
 
 json_valid() {
   if [[ "${json_runner[0]}" == python3 ]]; then
-    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null </dev/null
+    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null 2>/dev/null </dev/null
   else
-    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null </dev/null
+    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null 2>/dev/null </dev/null
   fi
 }
 
@@ -62,14 +62,21 @@ json_plugin_skills() {
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as file:
     plugin = json.load(file)
-for skill in plugin.get("skills", []):
+skills = plugin.get("skills", [])
+if not isinstance(skills, list):
+    sys.exit(3)
+for skill in skills:
+    if not isinstance(skill, str):
+        sys.exit(3)
     print(skill)
 ' .claude-plugin/plugin.json </dev/null
   else
     "${json_runner[@]}" -e '
 const fs = require("fs");
 const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-for (const skill of plugin.skills || []) console.log(skill);
+const skills = plugin.skills === undefined ? [] : plugin.skills;
+if (!Array.isArray(skills) || skills.some((s) => typeof s !== "string")) process.exit(3);
+for (const skill of skills) console.log(skill);
 ' .claude-plugin/plugin.json </dev/null
   fi
 }
@@ -102,11 +109,25 @@ if (( plugin_valid )); then
     err 'package.json description does not match .claude-plugin/plugin.json description'
   fi
 
-  while IFS= read -r plugin_skill; do
-    if [[ ! -d "$plugin_skill" || ! -f "$plugin_skill/SKILL.md" ]]; then
-      err "plugin skill path $plugin_skill does not resolve to a directory containing SKILL.md"
-    fi
-  done < <(json_plugin_skills)
+  plugin_skills=$(json_plugin_skills)
+  if (( $? == 3 )); then
+    err '.claude-plugin/plugin.json skills must be an array of strings'
+  else
+    while IFS= read -r plugin_skill; do
+      [[ -z "$plugin_skill" ]] && continue
+      if [[ "$plugin_skill" != ./skills/* && "$plugin_skill" != skills/* ]]; then
+        err "plugin skill path $plugin_skill points outside skills/"
+        continue
+      fi
+      if [[ "$plugin_skill" == *..* ]]; then
+        err "plugin skill path $plugin_skill escapes the repository with .."
+        continue
+      fi
+      if [[ ! -d "$plugin_skill" || ! -f "$plugin_skill/SKILL.md" ]]; then
+        err "plugin skill path $plugin_skill does not resolve to a directory containing SKILL.md"
+      fi
+    done < <(printf '%s\n' "$plugin_skills")
+  fi
 fi
 
 while IFS= read -r skill_file; do
@@ -191,16 +212,22 @@ while IFS= read -r skill_file; do
     err "$skill_file is not listed in README.md as skills/$skill_name/SKILL.md"
   fi
 
-  if grep -rn --include='*.md' -E '(\]\([[:space:]]*|^[[:space:]]*\[[^]]+\]:[[:space:]]*)<?\.\./' "$skill_dir" >/dev/null; then
+  if grep -rn --include='*.md' -E '(\]\([[:space:]]*|^[[:space:]]*\[[^]]+\]:[[:space:]]*)<?(\./)*\.\./' "$skill_dir" >/dev/null; then
     err "$skill_dir contains a relative link with ../"
+  fi
+
+  if grep -rlF --include='*.md' -- $'\xe2\x80\x94' "$skill_dir" >/dev/null; then
+    err "$skill_dir contains an em-dash, which the writing rules ban"
   fi
 done < <(find skills -mindepth 2 -name SKILL.md 2>/dev/null | sort)
 
 while IFS= read -r skill_dir; do
-  if [[ ! -f "$skill_dir/SKILL.md" ]]; then
+  if [[ -L "$skill_dir" ]]; then
+    err "$skill_dir is a symlink, so its SKILL.md is never walked"
+  elif [[ ! -f "$skill_dir/SKILL.md" ]]; then
     err "$skill_dir exists but contains no SKILL.md"
   fi
-done < <(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+done < <(find skills -mindepth 1 -maxdepth 1 \( -type d -o -type l \) 2>/dev/null | sort)
 
 while IFS= read -r listed_name; do
   if [[ ! -f "skills/$listed_name/SKILL.md" ]]; then

@@ -27,8 +27,9 @@
   "author": "LilMGenius (https://github.com/LilMGenius)",
   "license": "MIT",
   "files": [
-    ".claude-plugin",
-    "skills",
+    ".claude-plugin/plugin.json",
+    "skills/**/*.md",
+    "!skills/**/*.local*",
     "CLAUDE.md",
     "LICENSE",
     "NOTICE",

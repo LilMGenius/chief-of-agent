@@ -52,7 +52,11 @@ while IFS= read -r file; do
     /^[[:space:]]*(```|~~~)/ { fenced = !fenced; next }
     fenced { next }
     { print }
+    END { if (fenced) exit 3 }
   ')
+  if (( $? == 3 )); then
+    err "$file leaves a code fence open, so every link after it went unchecked"
+  fi
 
   while IFS=$'\t' read -r label target; do
     refs["${label,,}"]=$target

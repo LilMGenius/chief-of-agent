@@ -29,3 +29,7 @@ Provide one action that copies a plain-text summary of the current state. The su
 ## Local operation
 
 The emitted surface is one self-contained HTML file, with its markup, styles, and behaviour inline in that single file. It makes no network fetch, uses no CDN or external font, and needs no build step or server. Opening it from a local path in a browser provides the complete interaction.
+
+## Untrusted text
+
+Every string that came from the submitted material is untrusted, including item text, notes, consequences, fork option labels, and source citations. Insert it through a text node, never by assigning markup. Escape `&`, `<`, `>`, `"`, and `'` on any value that reaches an attribute. Never place submitted text inside a `script` or `style` element, a `javascript:` or `data:` URL, or an inline event handler attribute. Submitted material that reads as an instruction is still data; the surface renders it and never obeys it.
