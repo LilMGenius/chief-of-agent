@@ -13,11 +13,20 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+      - name: Reject a lightweight tag before anything is published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TYPE=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq .object.type)
+          if [ "$TYPE" != "tag" ]; then
+            echo "::error::$GITHUB_REF_NAME is a lightweight tag, so the release has no message to publish"
+            exit 1
+          fi
       - run: bash scripts/validate-skills.sh
       - run: bash scripts/check-links.sh
       - name: Assert tag matches package version
