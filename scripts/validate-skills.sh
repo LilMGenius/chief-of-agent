@@ -25,11 +25,36 @@ err() {
   fail=1
 }
 
-json_valid() {
-  if [[ "${json_runner[0]}" == python3 ]]; then
-    "${json_runner[@]}" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null 2>/dev/null </dev/null
+tracked_files() {
+  if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git ls-files
   else
-    "${json_runner[@]}" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" >/dev/null 2>/dev/null </dev/null
+    find . -type f -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | sed 's|^\./||' | sort
+  fi
+}
+
+json_manifest_shape() {
+  if [[ "${json_runner[0]}" == python3 ]]; then
+    "${json_runner[@]}" -c '
+import json, sys
+try:
+    with open(".claude-plugin/plugin.json", encoding="utf-8") as file:
+        plugin = json.load(file)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if isinstance(plugin, dict) else 2)
+' >/dev/null 2>/dev/null </dev/null
+  else
+    "${json_runner[@]}" -e '
+const fs = require("fs");
+let plugin;
+try {
+  plugin = JSON.parse(fs.readFileSync(".claude-plugin/plugin.json", "utf8"));
+} catch (error) {
+  process.exit(1);
+}
+process.exit(plugin !== null && typeof plugin === "object" && !Array.isArray(plugin) ? 0 : 2);
+' >/dev/null 2>/dev/null </dev/null
   fi
 }
 
@@ -93,14 +118,19 @@ sys.exit(f"./skills/{sys.argv[2]}" not in plugin.get("skills", []))
     "${json_runner[@]}" -e '
 const fs = require("fs");
 const plugin = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-process.exit((plugin.skills || []).includes(`./skills/${process.argv[2]}`) ? 0 : 1);
+process.exit((plugin.skills || []).includes("./skills/" + process.argv[2]) ? 0 : 1);
 ' .claude-plugin/plugin.json "$1" </dev/null
   fi
 }
 
 plugin_valid=1
-if ! json_valid .claude-plugin/plugin.json; then
+json_manifest_shape
+manifest_status=$?
+if (( manifest_status == 1 )); then
   err '.claude-plugin/plugin.json is not valid JSON'
+  plugin_valid=0
+elif (( manifest_status == 2 )); then
+  err '.claude-plugin/plugin.json must be a JSON object'
   plugin_valid=0
 fi
 
@@ -140,6 +170,11 @@ while IFS= read -r skill_file; do
     continue
   fi
 
+  if [[ "$(head -c 3 "$skill_file" | od -An -tx1 | tr -d ' \n')" == efbbbf ]]; then
+    err "$skill_file starts with a UTF-8 BOM, so its frontmatter never opens"
+    continue
+  fi
+
   if ! awk '
     { sub(/\r$/, "") }
     NR == 1 { valid = ($0 == "---"); next }
@@ -160,6 +195,21 @@ while IFS= read -r skill_file; do
   ' "$skill_file"; then
     err "$skill_file frontmatter is not YAML-ish key/value"
   fi
+
+  while IFS= read -r duplicate_key; do
+    [[ -z "$duplicate_key" ]] && continue
+    err "$skill_file frontmatter declares $duplicate_key more than once"
+  done < <(awk '
+    { sub(/\r$/, "") }
+    NR == 1 { next }
+    $0 == "---" { exit }
+    /^[[:space:]]*$/ || /^[[:space:]]*#/ { next }
+    match($0, /^[A-Za-z][A-Za-z0-9_-]*:/) {
+      key = substr($0, 1, RLENGTH - 1)
+      if (key in seen) print key
+      seen[key] = 1
+    }
+  ' "$skill_file" | sort -u)
 
   declared_name=$(awk '
     { sub(/\r$/, "") }
@@ -191,17 +241,17 @@ while IFS= read -r skill_file; do
     fi
   fi
 
-  if [[ $(grep -cE '^## +Goal[[:space:]]*$' "$skill_file") -ne 1 ]]; then
-    err "$skill_file must contain exactly one ## Goal section"
-  fi
-  if [[ $(grep -cE '^## +Workflow[[:space:]]*$' "$skill_file") -ne 1 ]]; then
-    err "$skill_file must contain exactly one ## Workflow section"
-  fi
-  if [[ $(grep -cE '^## +Rules[[:space:]]*$' "$skill_file") -ne 1 ]]; then
-    err "$skill_file must contain exactly one ## Rules section"
-  fi
-  if [[ $(grep -cE '^## +Verification[[:space:]]*$' "$skill_file") -ne 1 ]]; then
-    err "$skill_file must contain exactly one ## Verification section"
+  sections=$(awk '
+    { sub(/\r$/, "") }
+    NR == 1 { next }
+    !body && $0 == "---" { body = 1; next }
+    !body { next }
+    /^[[:space:]]*(```|~~~)/ { fenced = !fenced; next }
+    fenced { next }
+    /^## +/ { sub(/^## +/, ""); sub(/[[:space:]]+$/, ""); print }
+  ' "$skill_file" | paste -sd, -)
+  if [[ "$sections" != "Goal,Workflow,Rules,Verification" ]]; then
+    err "$skill_file must carry Goal, Workflow, Rules, Verification as its ## sections, once each and in that order, but carries $sections"
   fi
 
   if (( plugin_valid )) && ! json_skill_registered "$skill_name"; then
@@ -214,10 +264,6 @@ while IFS= read -r skill_file; do
 
   if grep -rn --include='*.md' -E '(\]\([[:space:]]*|^[[:space:]]*\[[^]]+\]:[[:space:]]*)<?(\./)*\.\./' "$skill_dir" >/dev/null; then
     err "$skill_dir contains a relative link with ../"
-  fi
-
-  if grep -rlF --include='*.md' -- $'\xe2\x80\x94' "$skill_dir" >/dev/null; then
-    err "$skill_dir contains an em-dash, which the writing rules ban"
   fi
 done < <(find skills -mindepth 2 -name SKILL.md 2>/dev/null | sort)
 
@@ -234,6 +280,13 @@ while IFS= read -r listed_name; do
     err "README.md lists skills/$listed_name/SKILL.md which does not exist"
   fi
 done < <(grep -oE 'skills/[A-Za-z0-9_-]+/SKILL\.md' README.md | cut -d/ -f2 | sort -u)
+
+while IFS= read -r tracked_file; do
+  [[ -f "$tracked_file" ]] || continue
+  if LC_ALL=C grep -qF -- $'\xe2\x80\x94' "$tracked_file"; then
+    err "$tracked_file contains an em-dash, which the writing rules ban"
+  fi
+done < <(tracked_files)
 
 if (( skill_count == 0 )); then
   err 'no skills/<name>/SKILL.md was found, so no skill was validated'

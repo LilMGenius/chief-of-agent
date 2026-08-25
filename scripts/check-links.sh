@@ -12,15 +12,31 @@ err() {
   fail=1
 }
 
-mapfile -t files < <(
-  find . -type f -name '*.md' -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | sed 's|^\./||' | sort
-)
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  mapfile -t files < <(git ls-files '*.md' | sort)
+else
+  mapfile -t files < <(
+    find . -type f -name '*.md' -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | sed 's|^\./||' | sort
+  )
+fi
 
 if (( ${#files[@]} == 0 )); then
   err 'no markdown file was found, so no link was checked'
   printf 'Checked 0 resolved links across 0 files.\n'
   exit 1
 fi
+
+path_exists_cased() {
+  local candidate=$1
+  local parent base
+  [[ -e "$candidate" ]] || return 1
+  while [[ "$candidate" == */ ]]; do candidate=${candidate%/}; done
+  while [[ "$candidate" == *"/./"* ]]; do candidate=${candidate//\/.\//\/}; done
+  parent=$(dirname "$candidate")
+  base=$(basename "$candidate")
+  [[ "$base" == "." || "$base" == ".." ]] && return 0
+  ls -a1 "$parent" 2>/dev/null | grep -qxF -- "$base"
+}
 
 check_target() {
   local target=$1
@@ -30,9 +46,12 @@ check_target() {
 
   target=${target%%#*}
   target=${target%%\?*}
-  target=${target#<}
-  target=${target%>}
-  target=${target%% *}
+  if [[ "$target" == "<"*">" ]]; then
+    target=${target#<}
+    target=${target%>}
+  else
+    target=${target%% *}
+  fi
 
   if [[ -z "$target" || "$target" == http://* || "$target" == https://* || "$target" == //* || "$target" == mailto:* || "$target" == tel:* ]]; then
     return
@@ -43,6 +62,8 @@ check_target() {
   resolved_links=$((resolved_links + 1))
   if [[ ! -e "$resolved_path" ]]; then
     err "$source_file links to missing $target"
+  elif ! path_exists_cased "$resolved_path"; then
+    err "$source_file links to $target, which differs from the file on disk by case and breaks on a case-sensitive checkout"
   fi
 }
 
@@ -51,7 +72,19 @@ while IFS= read -r file; do
   content=$(sed -E 's/\r$//' "$file" | awk '
     /^[[:space:]]*(```|~~~)/ { fenced = !fenced; next }
     fenced { next }
-    { print }
+    {
+      line = $0
+      out = ""
+      while (match(line, /`+/)) {
+        ticks = substr(line, RSTART, RLENGTH)
+        out = out substr(line, 1, RSTART - 1)
+        rest = substr(line, RSTART + RLENGTH)
+        close_at = index(rest, ticks)
+        if (close_at == 0) { line = rest; continue }
+        line = substr(rest, close_at + length(ticks))
+      }
+      print out line
+    }
     END { if (fenced) exit 3 }
   ')
   if (( $? == 3 )); then
