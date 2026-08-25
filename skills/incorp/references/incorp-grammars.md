@@ -1,4 +1,4 @@
-# Intake grammars
+# Incorp grammars
 
 How a decided placement becomes bytes, and how those bytes are undone.
 
