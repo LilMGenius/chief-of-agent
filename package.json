@@ -6,9 +6,9 @@
     "agent",
     "agent-skills",
     "skills",
+    "agent-agnostic",
     "claude-code",
     "codex",
-    "agent-agnostic",
     "decision",
     "decision-support",
     "approval",
@@ -20,21 +20,11 @@
     "verdict",
     "knowledge-base",
     "documentation",
-    "intake",
-    "placement",
-    "ontology"
+    "ontology",
+    "placement"
   ],
   "author": "LilMGenius (https://github.com/LilMGenius)",
   "license": "MIT",
-  "files": [
-    ".claude-plugin/plugin.json",
-    "skills/**/*.md",
-    "!skills/**/*.local*",
-    "CLAUDE.md",
-    "LICENSE",
-    "NOTICE",
-    "README.md"
-  ],
   "homepage": "https://github.com/LilMGenius/chief-of-agent#readme",
   "repository": {
     "type": "git",
