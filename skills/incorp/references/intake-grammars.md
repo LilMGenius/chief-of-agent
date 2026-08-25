@@ -13,6 +13,9 @@ Read the destination document before editing it and identify which of four shape
 
 A document that matches none of the four is reported as an unknown grammar and is left untouched.
 
+Shape is the document's structure. The template sits one level below it: the fields a single entry carries and the order they sit in. Read two neighbouring entries at the insertion point and match the template they share, including which field holds the run's own reading of the material. An entry that puts that reading in the body asserts it at the same confidence as the observation it was drawn from.
+That field holds only the run's own reading. Material that arrives pre-analyzed fills it with the material's conclusions unless they are marked as the material's, which reads as work the run did and cannot be recovered later. Before writing it, compare each sentence against the material and keep only what is not already there.
+
 ## Per-shape insertion
 
 **Reverse-chronological dated log.** Position the entry by its own date inside the correct section: above every entry older than it, below every entry newer. It lands at the top only when its date is the newest one there. The date field takes the date the source itself carries, which is the earliest publication or execution date of the material. When that date cannot be established, say so in the entry instead of estimating it. Any date describing when the material was received is written in a separate field and is never promoted into the primary slot.
