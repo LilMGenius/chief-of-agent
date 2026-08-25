@@ -2,6 +2,7 @@
   "name": "chief-of-agent",
   "description": "Decision instruments that turn submitted material into checkable criteria and compute a verdict from the decider's own answers.",
   "skills": [
-    "./skills/decide"
+    "./skills/decide",
+    "./skills/incorp"
   ]
 }
